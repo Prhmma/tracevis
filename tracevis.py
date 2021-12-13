@@ -50,52 +50,37 @@ def get_args():
                         help="annotation for the first packets (dns and packet trace)")
     parser.add_argument('--annot2', action='store_true',
                         help="annotation for the second packets (dns and packet trace)")
-    args = parser.parse_args()
-    return args
+    return parser.parse_args()
 
 
 def main(args):
-    name_prefix = ""
-    continue_to_max_ttl = False
     max_ttl = MAX_TTL
     timeout = TIMEOUT
-    attach_jscss = False
-    request_ips = []
     packet_1 = None
     annotation_1 = ""
     packet_2 = None
     annotation_2 = ""
-    blocked_address = ""
-    accessible_address = ""
     do_traceroute = False
     was_successful = False
     measurement_path = ""
-    edge_lable = "backttl"
-    if args.get("name"):
-        name_prefix = args["name"] + "-"
-    if args.get("ips"):
-        request_ips = args["ips"].split(',')
-    if args.get("domain1"):
-        accessible_address = args["domain1"]
-    if args.get("domain2"):
-        blocked_address = args["domain2"]
-    if args.get("continue"):
-        continue_to_max_ttl = True
+    name_prefix = args["name"] + "-" if args.get("name") else ""
+    request_ips = args["ips"].split(',') if args.get("ips") else []
+    accessible_address = args["domain1"] if args.get("domain1") else ""
+    blocked_address = args["domain2"] if args.get("domain2") else ""
+    continue_to_max_ttl = bool(args.get("continue"))
     if args.get("maxttl"):
         max_ttl = args["maxttl"]
     if args.get("timeout"):
         timeout = args["timeout"]
-    if args.get("attach"):
-        attach_jscss = True
+    attach_jscss = bool(args.get("attach"))
     if args.get("annot1"):
         annotation_1 = args["annot1"]
     if args.get("annot2"):
         annotation_2 = args["annot2"]
-    if args.get("label"):
-        edge_lable = args["label"].lower()
+    edge_lable = args["label"].lower() if args.get("label") else "backttl"
     if args.get("dns") or args.get("dnstcp"):
         do_traceroute = True
-        name_prefix = name_prefix + "dns"
+        name_prefix += "dns"
         packet_1, annotation_1, packet_2, annotation_2 = utils.dns.get_dns_packets(
             blocked_address=blocked_address, accessible_address=accessible_address,
             dns_over_tcp=(args["dnstcp"]))
@@ -103,7 +88,7 @@ def main(args):
             request_ips = ["1.1.1.1", "8.8.8.8", "9.9.9.9"]
     if args.get("packet"):
         do_traceroute = True
-        name_prefix = name_prefix + "packet"
+        name_prefix += "packet"
         packet_1, packet_2 = utils.packet_input.copy_input_packets()
     if do_traceroute:
         was_successful, measurement_path = utils.trace.trace_route(
@@ -113,17 +98,18 @@ def main(args):
             annotation_1=annotation_1, annotation_2=annotation_2,
             continue_to_max_ttl=continue_to_max_ttl)
     if args.get("ripe"):
-        name_prefix = name_prefix + "ripe-atlas"
+        name_prefix += "ripe-atlas"
         was_successful, measurement_path = utils.ripe_atlas.download_from_atlas(
             probe_id=args["ripe"])
     if args.get("file"):
         was_successful = True
         measurement_path = args["file"]
-    if was_successful:
-        if utils.vis.vis(
-                measurement_path=measurement_path, attach_jscss=attach_jscss,
-                edge_lable=edge_lable):
-            print("finished.")
+    if was_successful and utils.vis.vis(
+        measurement_path=measurement_path,
+        attach_jscss=attach_jscss,
+        edge_lable=edge_lable,
+    ):
+        print("finished.")
 
 
 if __name__ == "__main__":

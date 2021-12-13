@@ -9,9 +9,7 @@ def yesno_second_packet(question):
     if answer not in ['y', 'n']:
         print(f'{answer} is invalid, please try again...')
         return yesno_second_packet(question)
-    if answer == 'y':
-        return True
-    return False
+    return answer == 'y'
 
 
 def copy_input_packets():

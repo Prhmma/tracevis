@@ -63,9 +63,7 @@ def styled_tooltips(
         packet_size, repeat_all_steps, device_os_name, annotation):
     time_size = "*"
     elapsed_ms_str = "*"
-    packet_size_str = "*"
-    if packet_size != "*":
-        packet_size_str = str(packet_size) + "B"
+    packet_size_str = str(packet_size) + "B" if packet_size != "*" else "*"
     if elapsed_ms != "*":
         elapsed_ms_str = str(format(elapsed_ms, '.3f')) + "ms"
         time_size = str(format(elapsed_ms/packet_size, '.3f')) + "ms/B"
@@ -82,19 +80,13 @@ def styled_tooltips(
 
 
 def already_reached_destination(previous_node_id, current_node_ip):
-    if previous_node_id in {
+    return previous_node_id in {
             str(current_node_ip),
-            ("middlebox" + str(current_node_ip) + "x")}:
-        return True
-    else:
-        return False
+            ("middlebox" + str(current_node_ip) + "x")}
 
 
 def initialize_first_nodes(src_addr):
-    nodes = []
-    for _ in range(10):
-        nodes.append(str(src_addr))
-    return nodes
+    return [str(src_addr) for _ in range(10)]
 
 
 def save_measurement_graph(graph_name, attach_jscss):
@@ -116,12 +108,11 @@ def vis(measurement_path, attach_jscss, edge_lable: str = "none"):
     was_successful = False
     with open(measurement_path) as json_file:
         all_measurements = json.load(json_file)
-    measurement_steps = 0
     src_addr = all_measurements[0]["src_addr"]
     src_addr_id = str(int(ipaddress.IPv4Address(src_addr)))
     multi_directed_graph.add_node(
         src_addr_id, label=src_addr, color="Chocolate", title="source address")
-    for measurement in all_measurements:
+    for measurement_steps, measurement in enumerate(all_measurements):
         previous_node_ids = initialize_first_nodes(src_addr_id)
         dst_addr = measurement["dst_addr"]
         dst_addr_id = str(int(ipaddress.IPv4Address(dst_addr)))
@@ -163,11 +154,11 @@ def vis(measurement_path, attach_jscss, edge_lable: str = "none"):
                             result["ttl"], current_ttl)
                         if "rtt" in result.keys():
                             elapsed_ms = result["rtt"]
-                        if edge_lable == "rtt":
+                        if edge_lable == "backttl":
+                            current_edge_label = str(backttl)
+                        elif edge_lable == "rtt":
                             if elapsed_ms != "*":
                                 current_edge_label = format(elapsed_ms, '.3f')
-                        elif edge_lable == "backttl":
-                            current_edge_label = str(backttl)
                         current_node_id = str(
                             int(ipaddress.IPv4Address(answer_ip)))
                         if device_color == MIDDLEBOX_COLOR:
@@ -190,7 +181,6 @@ def vis(measurement_path, attach_jscss, edge_lable: str = "none"):
                     )
                     previous_node_ids[repeat_steps] = current_node_id
                 repeat_steps += 1
-        measurement_steps += 1
     print("saving measurement graph...")
     save_measurement_graph(measurement_path, attach_jscss)
     print("· · · - · -     · · · - · -     · · · - · -     · · · - · -")
