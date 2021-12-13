@@ -21,7 +21,6 @@ MEASUREMENT_IDS = [
 
 
 def download_from_atlas(probe_id, prefix: str = ""):
-    all_measurements = []
     measurement_name = ""
     was_successful = False
     if prefix != "":
@@ -36,6 +35,7 @@ def download_from_atlas(probe_id, prefix: str = ""):
         print(
             "downloading data from probe ID: " + str(probe_id))
         print(" · · · - - - · · ·     · · · - - - · · ·     · · · - - - · · · ")
+        all_measurements = []
         for measurement_id in MEASUREMENT_IDS:
             print(
                 "downloading measurement ID: " + str(measurement_id))
@@ -57,7 +57,7 @@ def download_from_atlas(probe_id, prefix: str = ""):
             print(" · · · - - - · · ·     · · · - - - · · ·     · · · - - - · · · ")
         print(
             " ********************************************************************** ")
-        if len(all_measurements) < 1:
+        if not all_measurements:
             exit()
         measurement_path = OUTPUT_DIR + measurement_name + ".json"
         print("saving json file... to: " + measurement_path)

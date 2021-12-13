@@ -55,11 +55,10 @@ class Traceroute:
         result_index = 0
         for try_step in self.result:  # will be up to 255
             results = try_step["result"]
-            repeat_steps = 0
-            for result in results:  # will be up to 3
-                if "x" in result.keys():
-                    if '-' == result["x"]:
-                        repeat_steps += 1
+            repeat_steps = sum(
+                "x" in result.keys() and result["x"] == '-' for result in results
+            )
+
             if repeat_steps == 3:
                 del self.result[result_index:]
                 break

@@ -96,15 +96,11 @@ def send_packet(request_packet, request_ip, current_ttl, timeout):
 
 
 def already_reached_destination(previous_node_id, current_node_ip):
-    if previous_node_id == current_node_ip:
-        return True
-    else:
-        return False
+    return previous_node_id == current_node_ip
 
 
 def are_equal(original_list, result_list):
-    counter = 0
-    for item in original_list:
+    for counter, item in enumerate(original_list):
         original_item = item
         reault_item_1 = result_list[0][counter]
         if reault_item_1 != original_item:
@@ -113,14 +109,11 @@ def are_equal(original_list, result_list):
             reault_item_2 = result_list[1][counter]
             if reault_item_2 != original_item:
                 return False
-        counter += 1
     return True
 
 
 def initialize_first_nodes(request_ips):
-    nodes = []
-    for _ in request_ips:
-        nodes.append(LOCALHOST)
+    nodes = [LOCALHOST for _ in request_ips]
     if have_2_packet:
         return [nodes, nodes.copy()]
     else:
@@ -155,16 +148,15 @@ def get_proto(request_packets):
         packet_1_proto = "UDP"
     elif(request_packets[0]).haslayer(ICMP):
         packet_1_proto = "ICMP"
-    if have_2_packet:
-        if (request_packets[1]).haslayer(TCP):
-            packet_2_proto = "TCP"
-        elif (request_packets[1]).haslayer(UDP):
-            packet_2_proto = "UDP"
-        elif(request_packets[1]).haslayer(ICMP):
-            packet_2_proto = "ICMP"
-        return packet_1_proto, packet_2_proto
-    else:
+    if not have_2_packet:
         return packet_1_proto, ""
+    if (request_packets[1]).haslayer(TCP):
+        packet_2_proto = "TCP"
+    elif (request_packets[1]).haslayer(UDP):
+        packet_2_proto = "UDP"
+    elif(request_packets[1]).haslayer(ICMP):
+        packet_2_proto = "ICMP"
+    return packet_1_proto, packet_2_proto
 
 
 def save_measurement_data(request_ips, measurement_name, continue_to_max_ttl):
@@ -215,11 +207,10 @@ def trace_route(
     if request_packet_1 is None or len(ip_list) < 1:
         print("failed")  # todo: xhdix
         exit()
+    request_packets.append(request_packet_1)
     if request_packet_2 == "":
-        request_packets.append(request_packet_1)
         have_2_packet = False
     else:
-        request_packets.append(request_packet_1)
         request_packets.append(request_packet_2)
         have_2_packet = True
     request_ips = ip_list
@@ -228,7 +219,6 @@ def trace_route(
             datetime.utcnow().strftime("%Y%m%d-%H%M")
     else:
         measurement_name = "tracevis-" + datetime.utcnow().strftime("%Y%m%d-%H%M")
-    repeat_all_steps = 0
     packet_1_proto, packet_2_proto = get_proto(request_packets)
     initialize_json_first_nodes(
         request_ips=request_ips, annotation_1=annotation_1, annotation_2=annotation_2,
@@ -237,13 +227,12 @@ def trace_route(
     if not os.path.exists(OUTPUT_DIR):
         os.mkdir(OUTPUT_DIR)
     print("- · - · -     - · - · -     - · - · -     - · - · -")
-    while repeat_all_steps < 3:
-        repeat_all_steps += 1
+    for repeat_all_steps in range(1, 4):
         previous_node_ids = initialize_first_nodes(request_ips)
         for current_ttl in range(1, max_ttl + 1):
+            ip_steps = 0
+            access_block_steps = 0
             if not continue_to_max_ttl and are_equal(request_ips, previous_node_ids):
-                ip_steps = 0
-                access_block_steps = 0
                 while ip_steps < len(request_ips):
                     # to avoid confusing the order of results when we have already reached our destination
                     measurement_data[access_block_steps][ip_steps].add_hop(
@@ -254,8 +243,6 @@ def trace_route(
                         ip_steps = 0
                         access_block_steps = 1
             else:
-                ip_steps = 0
-                access_block_steps = 0
                 print(
                     "  · - · - · repeat step: " + str(repeat_all_steps) 
                     + "  · - · - ·  ttl step: " + str(current_ttl) + " · - · - ·")
@@ -265,26 +252,22 @@ def trace_route(
                     not_yet_destination = not (already_reached_destination(
                         previous_node_ids[access_block_steps][ip_steps],
                         request_ips[ip_steps]))
-                    if not continue_to_max_ttl:
-                        if not_yet_destination:
-                            answer_ip, elapsed_ms, packet_size, req_answer_ttl, answer_summary = send_packet(
-                                request_packets[access_block_steps], request_ips[ip_steps],
-                                current_ttl, timeout)
-                            measurement_data[access_block_steps][ip_steps].add_hop(
-                                current_ttl, answer_ip, elapsed_ms, packet_size, req_answer_ttl, answer_summary
-                            )
-                        else:
-                            sleep_time = 0
-                            # to avoid confusing the order of results when we have already reached our destination
-                            measurement_data[access_block_steps][ip_steps].add_hop(
-                                current_ttl, "", 0, 0, 0, ""
-                            )
-                    else:
+                    if (
+                        not continue_to_max_ttl
+                        and not_yet_destination
+                        or continue_to_max_ttl
+                    ):
                         answer_ip, elapsed_ms, packet_size, req_answer_ttl, answer_summary = send_packet(
                             request_packets[access_block_steps], request_ips[ip_steps],
                             current_ttl, timeout)
                         measurement_data[access_block_steps][ip_steps].add_hop(
                             current_ttl, answer_ip, elapsed_ms, packet_size, req_answer_ttl, answer_summary
+                        )
+                    else:
+                        sleep_time = 0
+                        # to avoid confusing the order of results when we have already reached our destination
+                        measurement_data[access_block_steps][ip_steps].add_hop(
+                            current_ttl, "", 0, 0, 0, ""
                         )
                     if not_yet_destination:
                         if answer_ip == "***":
